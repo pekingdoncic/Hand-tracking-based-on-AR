@@ -1,0 +1,40 @@
+import cv2
+from cvzone.HandTrackingModule import HandDetector
+import socket
+#Parameters
+width,height=1280,720
+#Webcam
+cap = cv2.VideoCapture(0)
+cap.set(3,width)
+cap.set(4,height)
+
+#Hand Detector
+detector=HandDetector(maxHands=1,detectionCon=0.7)
+#detectionCon为置信区间！为什么之前设置的0.8不可以？是因为现场的光线太暗了！0.8太高了，不太行，就得是0.7！
+
+#传送数据：
+sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+serverAddressPort=("127.0.0.1",5052)
+
+while True:
+    # Get the frame from the webcam
+    success,img = cap.read()
+    #Hand
+    hands, img = detector.findHands(img)
+
+    data=[]
+    #LandMark  Values (x,y,z)*21
+    if hands:
+        # Get the first hand detected
+        hand = hands[0]
+        # Get the landmark list
+        lmList = hand['lmList']
+        #print(lmList)
+        for lm in lmList:
+            data.extend([lm[0],height-lm[1],lm[2]])#这里是因为OpenCV和unity中起点坐标的定义有区别！
+            # print(data)
+            sock.sendto(str.encode(str(data)),serverAddressPort)
+    img=cv2.resize(img,(0,0),None,0.5,0.5)
+    cv2.imshow("Image",img)
+    cv2.waitKey(1)
+
